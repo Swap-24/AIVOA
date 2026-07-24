@@ -31,7 +31,6 @@ class ComplaintStatus(str, Enum):
 
 
 class ComplaintForm(BaseModel):
-    """The structured QMS record the copilot populates incrementally."""
 
     complaint_id: Optional[str] = None
 
