@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import uuid
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
-
+from app.db import get_db
 from app.graph.graph import copilot_graph
 from app.models.schemas import (
     CommitRequest,
@@ -11,14 +11,15 @@ from app.models.schemas import (
     CopilotResponse,
     ExtractTextRequest,
 )
+from app.services import complaint_repository as repo
 from app.services.pdf_parser import extract_text_from_pdf
 
 router = APIRouter(prefix="/api/complaint", tags=["complaint"])
 
-_sessions: dict[str, ComplaintForm] = {}
 
-
-async def _run_graph(session_id: str, raw_text: str, current_form: ComplaintForm) -> CopilotResponse:
+async def _run_graph(
+    db: Session, session_id: str, raw_text: str, current_form: ComplaintForm
+) -> CopilotResponse:
     result = await copilot_graph.ainvoke(
         {
             "session_id": session_id,
@@ -29,15 +30,12 @@ async def _run_graph(session_id: str, raw_text: str, current_form: ComplaintForm
     )
 
     form: ComplaintForm = result["current_form"]
-    if not form.complaint_id:
-        form.complaint_id = f"CC-2026-{str(uuid.uuid4().int)[:5]}"
-
-    _sessions[session_id] = form
+    persisted_form = repo.upsert_draft(db, session_id, form)
 
     return CopilotResponse(
         session_id=session_id,
         assistant_message=result["assistant_message"],
-        form=form,
+        form=persisted_form,
         updated_fields=result.get("updated_fields", []),
         completeness=result.get("completeness", 0.0),
         missing_required_fields=result.get("missing_required_fields", []),
@@ -45,16 +43,22 @@ async def _run_graph(session_id: str, raw_text: str, current_form: ComplaintForm
 
 
 @router.post("/extract", response_model=CopilotResponse)
-async def extract_text(payload: ExtractTextRequest) -> CopilotResponse:
+async def extract_text(
+    payload: ExtractTextRequest, db: Session = Depends(get_db)
+) -> CopilotResponse:
     """Handles both first-pass extraction from pasted text/email AND
     conversational corrections — the graph's intent classifier decides
     which path to take."""
-    current_form = payload.current_form or _sessions.get(payload.session_id, ComplaintForm())
-    return await _run_graph(payload.session_id, payload.message, current_form)
+    current_form = payload.current_form or repo.get_draft_by_session(
+        db, payload.session_id
+    ) or ComplaintForm()
+    return await _run_graph(db, payload.session_id, payload.message, current_form)
 
 
 @router.post("/extract-pdf", response_model=CopilotResponse)
-async def extract_pdf(session_id: str, file: UploadFile = File(...)) -> CopilotResponse:
+async def extract_pdf(
+    session_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)
+) -> CopilotResponse:
     if file.content_type != "application/pdf":
         raise HTTPException(400, "Only PDF files are supported")
 
@@ -63,26 +67,35 @@ async def extract_pdf(session_id: str, file: UploadFile = File(...)) -> CopilotR
     if not text:
         raise HTTPException(422, "Could not extract any text from this PDF")
 
-    current_form = _sessions.get(session_id, ComplaintForm())
-    return await _run_graph(session_id, text, current_form)
+    current_form = repo.get_draft_by_session(db, session_id) or ComplaintForm()
+    return await _run_graph(db, session_id, text, current_form)
 
 
 @router.post("/commit")
-async def commit_complaint(payload: CommitRequest) -> dict:
-    """Persist the final, user-approved form to the QMS ledger.
-
-    TODO: replace with an actual DB insert (SQLAlchemy model + Postgres).
-    Left as an in-memory ack here since the assignment's storage layer
-    is DB-agnostic (MySQL/Postgres) and this keeps the assessment build
-    runnable without provisioning a database first.
-    """
-    form = payload.form
-    form.status = "Committed"
-    return {"status": "committed", "complaint_id": form.complaint_id, "form": form}
+async def commit_complaint(
+    payload: CommitRequest, db: Session = Depends(get_db)
+) -> dict:
+    """Persist the final, user-approved form to the QMS ledger as a
+    permanent (Committed) record."""
+    committed_form = repo.commit_complaint(db, payload.form)
+    return {
+        "status": "committed",
+        "complaint_id": committed_form.complaint_id,
+        "form": committed_form,
+    }
 
 
 @router.get("/session/{session_id}", response_model=ComplaintForm)
-async def get_session(session_id: str) -> ComplaintForm:
-    if session_id not in _sessions:
+async def get_session(session_id: str, db: Session = Depends(get_db)) -> ComplaintForm:
+    form = repo.get_draft_by_session(db, session_id)
+    if form is None:
         raise HTTPException(404, "Session not found")
-    return _sessions[session_id]
+    return form
+
+
+@router.get("/{complaint_id}", response_model=ComplaintForm)
+async def get_complaint(complaint_id: str, db: Session = Depends(get_db)) -> ComplaintForm:
+    form = repo.get_by_complaint_id(db, complaint_id)
+    if form is None:
+        raise HTTPException(404, "Complaint not found")
+    return form
