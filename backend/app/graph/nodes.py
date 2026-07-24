@@ -68,10 +68,6 @@ async def classify_intent_node(state: CopilotState) -> CopilotState:
 
 
 async def extract_and_merge_node(state: CopilotState) -> CopilotState:
-    """Extract structured fields from the raw text and merge them into
-    the current form. Works for both first-pass extraction and
-    incremental corrections, since the model is shown the current form
-    and told to only return fields it wants to change."""
     current_form: ComplaintForm = state.get("current_form", ComplaintForm())
 
     system_prompt = (
@@ -127,10 +123,7 @@ def completeness_check_node(state: CopilotState) -> CopilotState:
 
 
 async def risk_assessment_node(state: CopilotState) -> CopilotState:
-    """Generate severity / suggested action / risk narrative once there's
-    enough substance (product + batch + description) to reason about.
-    Skipped otherwise so we don't hallucinate a risk profile from
-    half a form."""
+
     form = state.get("current_form", ComplaintForm())
     form_dict = form.model_dump()
 
@@ -175,9 +168,6 @@ async def risk_assessment_node(state: CopilotState) -> CopilotState:
 
 
 async def generate_response_node(state: CopilotState) -> CopilotState:
-    """Produce the chat-facing message. Kept as a cheap templated
-    response for the common cases, with an LLM fallback for off-topic
-    messages so the copilot can still hold a basic conversation."""
     intent = state.get("intent")
 
     if intent == "off_topic":
