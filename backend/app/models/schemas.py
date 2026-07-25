@@ -60,6 +60,11 @@ class ComplaintForm(BaseModel):
         use_enum_values = True
 
 
+class ComplaintSummary(ComplaintForm):
+    created_at: datetime
+    updated_at: datetime
+
+
 class ChatRole(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"

@@ -8,6 +8,7 @@ from app.graph.graph import copilot_graph
 from app.models.schemas import (
     CommitRequest,
     ComplaintForm,
+    ComplaintSummary,
     CopilotResponse,
     ExtractTextRequest,
 )
@@ -91,6 +92,13 @@ async def get_session(session_id: str, db: Session = Depends(get_db)) -> Complai
     if form is None:
         raise HTTPException(404, "Session not found")
     return form
+
+
+@router.get("/history", response_model=list[ComplaintSummary])
+async def list_complaints(
+    limit: int = 50, db: Session = Depends(get_db)
+) -> list[ComplaintSummary]:
+    return repo.list_complaints(db, limit=min(max(limit, 1), 100))
 
 
 @router.get("/{complaint_id}", response_model=ComplaintForm)

@@ -28,3 +28,8 @@ export async function commitComplaint(form) {
   const { data } = await client.post('/commit', { form });
   return data;
 }
+
+export async function fetchComplaintHistory(limit = 50) {
+  const { data } = await client.get('/history', { params: { limit } });
+  return data;
+}

@@ -1,5 +1,10 @@
 import { createSlice, createAsyncThunk, nanoid } from '@reduxjs/toolkit';
-import { extractText, extractPdf, commitComplaint } from '../api/complaintApi';
+import {
+  extractText,
+  extractPdf,
+  commitComplaint,
+  fetchComplaintHistory,
+} from '../api/complaintApi';
 
 const EMPTY_FORM = {
   complaint_id: null,
@@ -35,9 +40,13 @@ const initialState = {
   updatedFields: [],
   completeness: 0,
   missingRequiredFields: [],
+  history: [],
   isProcessing: false,
   isCommitting: false,
+  isHistoryOpen: false,
+  isLoadingHistory: false,
   error: null,
+  historyError: null,
 };
 
 export const sendMessage = createAsyncThunk(
@@ -64,6 +73,11 @@ export const commit = createAsyncThunk(
   }
 );
 
+export const loadComplaintHistory = createAsyncThunk(
+  'complaint/loadComplaintHistory',
+  async () => fetchComplaintHistory()
+);
+
 const complaintSlice = createSlice({
   name: 'complaint',
   initialState,
@@ -78,6 +92,23 @@ const complaintSlice = createSlice({
     updateField(state, action) {
       const { field, value } = action.payload;
       state.form[field] = value;
+    },
+    toggleHistory(state) {
+      state.isHistoryOpen = !state.isHistoryOpen;
+    },
+    closeHistory(state) {
+      state.isHistoryOpen = false;
+    },
+    loadHistoricalComplaint(state, action) {
+      state.form = stripHistoryDates(action.payload);
+      state.updatedFields = [];
+      state.completeness = 0;
+      state.missingRequiredFields = [];
+      state.messages.push({
+        id: nanoid(),
+        role: 'assistant',
+        content: `Loaded ${action.payload.complaint_id} from past complaints.`,
+      });
     },
   },
   extraReducers: (builder) => {
@@ -143,6 +174,19 @@ const complaintSlice = createSlice({
       .addCase(commit.rejected, (state, action) => {
         state.isCommitting = false;
         state.error = action.error.message;
+      })
+
+      .addCase(loadComplaintHistory.pending, (state) => {
+        state.isLoadingHistory = true;
+        state.historyError = null;
+      })
+      .addCase(loadComplaintHistory.fulfilled, (state, action) => {
+        state.isLoadingHistory = false;
+        state.history = action.payload;
+      })
+      .addCase(loadComplaintHistory.rejected, (state, action) => {
+        state.isLoadingHistory = false;
+        state.historyError = action.error.message;
       });
   },
 });
@@ -159,5 +203,18 @@ function applyCopilotResponse(state, payload) {
   });
 }
 
-export const { resetSession, updateField } = complaintSlice.actions;
+function stripHistoryDates(complaint) {
+  const { created_at, updated_at, ...form } = complaint;
+  void created_at;
+  void updated_at;
+  return form;
+}
+
+export const {
+  resetSession,
+  updateField,
+  toggleHistory,
+  closeHistory,
+  loadHistoricalComplaint,
+} = complaintSlice.actions;
 export default complaintSlice.reducer;

@@ -1,5 +1,6 @@
 import ComplaintForm from './components/ComplaintForm';
 import CopilotChat from './components/CopilotChat';
+import PastComplaintsPanel from './components/PastComplaintsPanel';
 
 export default function App() {
   return (
@@ -10,6 +11,7 @@ export default function App() {
         </div>
         <CopilotChat />
       </div>
+      <PastComplaintsPanel />
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, History } from 'lucide-react';
 import FormField from './FormField';
 import RiskAssessmentCard from './RiskAssessmentCard';
 import StatusBadge from './StatusBadge';
-import { updateField, commit, resetSession } from '../store/complaintSlice';
+import { updateField, commit, resetSession, toggleHistory } from '../store/complaintSlice';
 
 const SOURCE_OPTIONS = [
   'Email',
@@ -82,7 +82,18 @@ export default function ComplaintForm() {
             <h1 className="text-lg font-semibold text-ink">Log Customer Complaint</h1>
             <p className="text-sm text-ink-soft">API &amp; FDF Quality Assurance Module</p>
           </div>
-          <StatusBadge status={form.status} />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => dispatch(toggleHistory())}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-ink-soft transition-colors hover:bg-surface-sunken hover:text-ink"
+              aria-label="Show past complaints"
+              title="Past complaints"
+            >
+              <History size={17} />
+            </button>
+            <StatusBadge status={form.status} />
+          </div>
         </div>
 
         {completeness > 0 && completeness < 1 && (

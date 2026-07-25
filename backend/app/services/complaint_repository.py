@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.db_model import ComplaintRecord
-from app.models.schemas import ComplaintForm
+from app.models.schemas import ComplaintForm, ComplaintSummary
 
 _SHARED_FIELDS = [
     "complaint_id",
@@ -32,6 +32,22 @@ _SHARED_FIELDS = [
 def _record_to_form(record: ComplaintRecord) -> ComplaintForm:
     data = {field: getattr(record, field) for field in _SHARED_FIELDS}
     return ComplaintForm(**data)
+
+
+def _record_to_summary(record: ComplaintRecord) -> ComplaintSummary:
+    data = {field: getattr(record, field) for field in _SHARED_FIELDS}
+    data["created_at"] = record.created_at
+    data["updated_at"] = record.updated_at
+    return ComplaintSummary(**data)
+
+
+def list_complaints(db: Session, limit: int = 50) -> list[ComplaintSummary]:
+    records = db.scalars(
+        select(ComplaintRecord)
+        .order_by(ComplaintRecord.updated_at.desc())
+        .limit(limit)
+    ).all()
+    return [_record_to_summary(record) for record in records]
 
 
 def get_draft_by_session(db: Session, session_id: str) -> ComplaintForm | None:
