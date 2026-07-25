@@ -137,11 +137,14 @@ async def risk_assessment_node(state: CopilotState) -> CopilotState:
         "You are a pharmaceutical QA risk assessment assistant. Given a "
         "complaint's product, batch, and description, produce a JSON "
         "object with:\n"
+        '  "complaint_summary": concise one-sentence complaint summary\n'
         '  "severity_suggested": "Critical" | "Major" | "Minor"\n'
         '  "suggested_next_action": short imperative string, e.g. '
         '"Route to QA Investigation & Issue Replacer"\n'
         '  "initial_risk_assessment": 1-2 sentence plausible root-cause '
         "hypothesis and recommended next step, written like a QA analyst's note\n"
+        '  "root_cause_recommendation": focused recommended root-cause investigation path\n'
+        '  "capa_recommendation": specific corrective and preventive action recommendation\n'
         '  "complaint_category": short classification like '
         '"Product Defect - Discoloration"\n'
         "Base severity on patient safety impact: sterility/potency/"
@@ -159,12 +162,23 @@ async def risk_assessment_node(state: CopilotState) -> CopilotState:
         logger.exception("Risk assessment failed")
         return state
 
-    form.severity_suggested = result.get("severity_suggested", form.severity_suggested)
-    form.suggested_next_action = result.get("suggested_next_action", form.suggested_next_action)
-    form.initial_risk_assessment = result.get("initial_risk_assessment", form.initial_risk_assessment)
-    form.complaint_category = result.get("complaint_category", form.complaint_category)
+    updated_fields = list(state.get("updated_fields", []))
+    for field in (
+        "complaint_summary",
+        "severity_suggested",
+        "suggested_next_action",
+        "initial_risk_assessment",
+        "root_cause_recommendation",
+        "capa_recommendation",
+        "complaint_category",
+    ):
+        value = result.get(field)
+        if value:
+            setattr(form, field, value)
+            if field not in updated_fields:
+                updated_fields.append(field)
 
-    return {**state, "current_form": form}
+    return {**state, "current_form": form, "updated_fields": updated_fields}
 
 
 async def generate_response_node(state: CopilotState) -> CopilotState:

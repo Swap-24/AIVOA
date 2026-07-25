@@ -20,9 +20,13 @@ const EMPTY_FORM = {
   impacted_npm: null,
   complaint_category: null,
   complaint_description: null,
+  complaint_summary: null,
   severity_suggested: null,
   suggested_next_action: null,
   initial_risk_assessment: null,
+  root_cause_recommendation: null,
+  capa_recommendation: null,
+  duplicate_complaint_ids: null,
   status: 'Pending Triage',
 };
 

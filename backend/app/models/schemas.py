@@ -49,10 +49,14 @@ class ComplaintForm(BaseModel):
 
     complaint_category: Optional[str] = None
     complaint_description: Optional[str] = None
+    complaint_summary: Optional[str] = None
 
     severity_suggested: Optional[Severity] = None
     suggested_next_action: Optional[str] = None
     initial_risk_assessment: Optional[str] = None
+    root_cause_recommendation: Optional[str] = None
+    capa_recommendation: Optional[str] = None
+    duplicate_complaint_ids: Optional[str] = None
 
     status: ComplaintStatus = ComplaintStatus.PENDING_TRIAGE
 

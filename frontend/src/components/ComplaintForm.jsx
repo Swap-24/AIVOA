@@ -55,9 +55,18 @@ const SECTIONS = [
   },
 ];
 
+const REQUIRED_FIELD_LABELS = {
+  complaint_source: 'Complaint Source',
+  customer_name: 'Customer Name',
+  product_name: 'Product Name',
+  batch_number: 'Batch / Lot Number',
+  affected_quantity: 'Affected Quantity',
+  complaint_description: 'Structured Defect Summary',
+};
+
 export default function ComplaintForm() {
   const dispatch = useDispatch();
-  const { form, updatedFields, completeness, isCommitting } = useSelector(
+  const { form, updatedFields, completeness, missingRequiredFields, isCommitting } = useSelector(
     (s) => s.complaint
   );
 
@@ -70,7 +79,13 @@ export default function ComplaintForm() {
     return () => clearTimeout(timer);
   }, [JSON.stringify(updatedFields)]);
 
-  const hasRiskAssessment = !!form.severity_suggested;
+  const hasInsights = !!(
+    form.severity_suggested ||
+    form.complaint_summary ||
+    form.root_cause_recommendation ||
+    form.capa_recommendation ||
+    form.duplicate_complaint_ids
+  );
   const readyToCommit = form.status === 'Ready to Commit';
   const isCommitted = form.status === 'Committed';
 
@@ -107,6 +122,42 @@ export default function ComplaintForm() {
       </header>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
+        {completeness > 0 && (
+          <div className="rounded-lg border border-border bg-surface-sunken px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+                  Complaint Completeness Checker
+                </h2>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {Math.round(completeness * 100)}% complete
+                </p>
+              </div>
+              {missingRequiredFields.length === 0 ? (
+                <span className="rounded-md bg-success-soft px-2.5 py-1 text-xs font-medium text-success">
+                  Ready
+                </span>
+              ) : (
+                <span className="rounded-md bg-warning-soft px-2.5 py-1 text-xs font-medium text-warning">
+                  Missing {missingRequiredFields.length}
+                </span>
+              )}
+            </div>
+            {missingRequiredFields.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {missingRequiredFields.map((field) => (
+                  <span
+                    key={field}
+                    className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-ink-soft"
+                  >
+                    {REQUIRED_FIELD_LABELS[field] ?? field}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {SECTIONS.map((section) => (
           <div key={section.title}>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-faint">
@@ -134,7 +185,7 @@ export default function ComplaintForm() {
           </div>
         ))}
 
-        {hasRiskAssessment && (
+        {hasInsights && (
           <RiskAssessmentCard
             form={form}
             updatedFields={flashing}

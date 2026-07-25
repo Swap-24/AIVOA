@@ -31,6 +31,10 @@ async def _run_graph(
     )
 
     form: ComplaintForm = result["current_form"]
+    duplicate_matches = repo.find_duplicate_complaints(db, form)
+    form.duplicate_complaint_ids = ", ".join(
+        match.complaint_id for match in duplicate_matches if match.complaint_id
+    ) or None
     persisted_form = repo.upsert_draft(db, session_id, form)
 
     return CopilotResponse(

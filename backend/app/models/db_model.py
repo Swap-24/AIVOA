@@ -32,9 +32,13 @@ class ComplaintRecord(Base):
 
     complaint_category: Mapped[str | None] = mapped_column(String, nullable=True)
     complaint_description: Mapped[str | None] = mapped_column(String, nullable=True)
+    complaint_summary: Mapped[str | None] = mapped_column(String, nullable=True)
     severity_suggested: Mapped[str | None] = mapped_column(String, nullable=True)
     suggested_next_action: Mapped[str | None] = mapped_column(String, nullable=True)
     initial_risk_assessment: Mapped[str | None] = mapped_column(String, nullable=True)
+    root_cause_recommendation: Mapped[str | None] = mapped_column(String, nullable=True)
+    capa_recommendation: Mapped[str | None] = mapped_column(String, nullable=True)
+    duplicate_complaint_ids: Mapped[str | None] = mapped_column(String, nullable=True)
 
     status: Mapped[str] = mapped_column(String, default="Pending Triage")
 

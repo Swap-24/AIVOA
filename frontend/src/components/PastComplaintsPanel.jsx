@@ -128,9 +128,9 @@ export default function PastComplaintsPanel() {
                     </div>
                   </div>
 
-                  {complaint.complaint_description && (
+                  {(complaint.complaint_summary || complaint.complaint_description) && (
                     <p className="mt-3 line-clamp-3 text-sm leading-5 text-ink-soft">
-                      {complaint.complaint_description}
+                      {complaint.complaint_summary || complaint.complaint_description}
                     </p>
                   )}
                 </button>

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.db_model import ComplaintRecord
@@ -22,9 +22,13 @@ _SHARED_FIELDS = [
     "impacted_npm",
     "complaint_category",
     "complaint_description",
+    "complaint_summary",
     "severity_suggested",
     "suggested_next_action",
     "initial_risk_assessment",
+    "root_cause_recommendation",
+    "capa_recommendation",
+    "duplicate_complaint_ids",
     "status",
 ]
 
@@ -46,6 +50,43 @@ def list_complaints(db: Session, limit: int = 50) -> list[ComplaintSummary]:
         select(ComplaintRecord)
         .order_by(ComplaintRecord.updated_at.desc())
         .limit(limit)
+    ).all()
+    return [_record_to_summary(record) for record in records]
+
+
+def find_duplicate_complaints(
+    db: Session, form: ComplaintForm, limit: int = 5
+) -> list[ComplaintSummary]:
+    if not form.batch_number and not form.product_name:
+        return []
+
+    filters = []
+    if form.batch_number:
+        filters.append(ComplaintRecord.batch_number == form.batch_number)
+    if form.product_name and form.customer_name:
+        filters.append(
+            and_(
+                ComplaintRecord.product_name == form.product_name,
+                ComplaintRecord.customer_name == form.customer_name,
+            )
+        )
+    if form.product_name and form.complaint_category:
+        filters.append(
+            and_(
+                ComplaintRecord.product_name == form.product_name,
+                ComplaintRecord.complaint_category == form.complaint_category,
+            )
+        )
+
+    if not filters:
+        return []
+
+    query = select(ComplaintRecord).where(or_(*filters))
+    if form.complaint_id:
+        query = query.where(ComplaintRecord.complaint_id != form.complaint_id)
+
+    records = db.scalars(
+        query.order_by(ComplaintRecord.updated_at.desc()).limit(limit)
     ).all()
     return [_record_to_summary(record) for record in records]
 

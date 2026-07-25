@@ -1,4 +1,4 @@
-import { ShieldAlert } from 'lucide-react';
+import { CopyCheck, ShieldAlert } from 'lucide-react';
 import FormField from './FormField';
 
 const SEVERITY_DOT = {
@@ -8,13 +8,48 @@ const SEVERITY_DOT = {
 };
 
 export default function RiskAssessmentCard({ form, updatedFields, onChange }) {
+  const duplicateIds = form.duplicate_complaint_ids
+    ? form.duplicate_complaint_ids.split(',').map((id) => id.trim()).filter(Boolean)
+    : [];
+
   return (
     <div className="rounded-xl border border-accent-ring bg-accent-soft p-4">
       <div className="mb-3 flex items-center gap-2">
         <ShieldAlert size={15} className="text-accent" />
         <span className="text-xs font-semibold uppercase tracking-wide text-accent">
-          AI Copilot Risk Assessment
+          AI Copilot Complaint Insights
         </span>
+      </div>
+
+      <div className="mb-3 grid grid-cols-1 gap-3">
+        <FormField
+          label="Complaint Summary"
+          value={form.complaint_summary}
+          onChange={(v) => onChange('complaint_summary', v)}
+          highlighted={updatedFields.includes('complaint_summary')}
+          aiFilled={!!form.complaint_summary}
+        />
+
+        <div className="rounded-lg border border-accent-ring bg-surface px-3 py-2">
+          <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-ink-soft">
+            <CopyCheck size={12} className="text-accent" />
+            Duplicate Complaint Detection
+          </label>
+          {duplicateIds.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {duplicateIds.map((id) => (
+                <span
+                  key={id}
+                  className="rounded-md border border-warning/20 bg-warning-soft px-2 py-1 font-mono text-xs font-medium text-warning"
+                >
+                  {id}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-ink-soft">No duplicate matches found.</p>
+          )}
+        </div>
       </div>
 
       <div className="mb-3 grid grid-cols-2 gap-3">
@@ -49,6 +84,25 @@ export default function RiskAssessmentCard({ form, updatedFields, onChange }) {
         highlighted={updatedFields.includes('initial_risk_assessment')}
         aiFilled={!!form.initial_risk_assessment}
       />
+
+      <div className="mt-3 grid grid-cols-1 gap-3">
+        <FormField
+          label="Root Cause Recommendation"
+          value={form.root_cause_recommendation}
+          onChange={(v) => onChange('root_cause_recommendation', v)}
+          textarea
+          highlighted={updatedFields.includes('root_cause_recommendation')}
+          aiFilled={!!form.root_cause_recommendation}
+        />
+        <FormField
+          label="CAPA Recommendation"
+          value={form.capa_recommendation}
+          onChange={(v) => onChange('capa_recommendation', v)}
+          textarea
+          highlighted={updatedFields.includes('capa_recommendation')}
+          aiFilled={!!form.capa_recommendation}
+        />
+      </div>
     </div>
   );
 }
